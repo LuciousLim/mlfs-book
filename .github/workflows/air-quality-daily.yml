@@ -2,7 +2,7 @@ name: air-quality-daily
 
 on:
   workflow_dispatch:
-    schedule:
+  schedule:
     - cron: '11 6 * * *'
 
 jobs:
@@ -43,7 +43,7 @@ jobs:
 
           repository: .
 
-          status_options: '--untracked-files=no'
+          status_options: '--untracked-files=all'
 
           skip_dirty_check: true
 
