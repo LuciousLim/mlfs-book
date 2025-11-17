@@ -185,9 +185,9 @@ def get_pm25(aqicn_url: str, country: str, city: str, street: str, day: datetime
 def plot_air_quality_forecast(city: str, street: str, df: pd.DataFrame, file_path: str, hindcast=False):
     fig, ax = plt.subplots(figsize=(10, 6))
 
-    day = pd.to_datetime(df['date']).dt.date
+    day = pd.to_datetime(df.loc[df['street'] == street,'date']).dt.date
     # Plot each column separately in matplotlib
-    ax.plot(day, df['predicted_pm25'], label='Predicted PM2.5', color='red', linewidth=2, marker='o', markersize=5, markerfacecolor='blue')
+    ax.plot(day, df.loc[df['street'] == street,'predicted_pm25'], label='Predicted PM2.5', color='red', linewidth=2, marker='o', markersize=5, markerfacecolor='blue')
 
     # Set the y-axis to a logarithmic scale
     ax.set_yscale('log')
@@ -218,7 +218,7 @@ def plot_air_quality_forecast(city: str, street: str, df: pd.DataFrame, file_pat
     plt.xticks(rotation=45)
 
     if hindcast == True:
-        ax.plot(day, df['pm25'], label='Actual PM2.5', color='black', linewidth=2, marker='^', markersize=5, markerfacecolor='grey')
+        ax.plot(day, df.loc[df['street'] == street,'pm25'], label='Actual PM2.5', color='black', linewidth=2, marker='^', markersize=5, markerfacecolor='grey')
         legend2 = ax.legend(loc='upper left', fontsize='x-small')
         ax.add_artist(legend1)
 
@@ -288,13 +288,47 @@ def check_file_path(file_path):
         print(f"File successfully found at the path: {file_path}")
 
 def backfill_predictions_for_monitoring(weather_fg, air_quality_df, monitor_fg, model):
-    features_df = weather_fg.read()
+    features_df = weather_fg.read().copy()
     features_df = features_df.sort_values(by=['date'], ascending=True)
     features_df = features_df.tail(10)
-    features_df['predicted_pm25'] = model.predict(features_df[['temperature_2m_mean', 'precipitation_sum', 'wind_speed_10m_max', 'wind_direction_10m_dominant']])
-    df = pd.merge(features_df, air_quality_df[['date','pm25','street','country']], on="date")
-    df['days_before_forecast_day'] = 1
-    hindcast_df = df
-    df = df.drop('pm25', axis=1)
-    monitor_fg.insert(df, write_options={"wait_for_job": True})
+
+    features_df['date'] = pd.to_datetime(features_df['date'], utc=True)
+    air_quality_df['date'] = pd.to_datetime(air_quality_df['date'], utc=True)
+
+    streets = air_quality_df['street'].unique()
+    streets_df = pd.DataFrame({'street': streets})
+
+    features_df = features_df.merge(streets_df, how='cross')
+
+    aq_slice = air_quality_df[air_quality_df['date'].isin(features_df['date'])].copy()
+
+    street_cols = [c for c in air_quality_df.columns if c.startswith('street_')]
+
+    aq_slice = aq_slice[
+        ['date', 'street', 'country', 'pm25', 'pm25_rolling'] + street_cols
+    ]
+
+    df = features_df.merge(aq_slice, on=['date', 'street'], how='inner')
+
+    weather_cols = [
+        'temperature_2m_mean',
+        'precipitation_sum',
+        'wind_speed_10m_max',
+        'wind_direction_10m_dominant',
+    ]
+
+    feature_cols = ['pm25_rolling'] + street_cols + weather_cols
+
+    df['predicted_pm25'] = model.predict(df[feature_cols])
+
+    df['days_before_forecast_day'] = 1  # all of these are 1-day-ahead hindcasts
+
+    hindcast_df = df[
+        ['date', 'street', 'country', 'pm25', 'predicted_pm25', 'days_before_forecast_day']
+    ].copy()
+
+    # --- 6. Insert monitoring rows (no actual pm25) ---
+    monitor_insert_df = df.drop(columns=['pm25'])
+    monitor_fg.insert(monitor_insert_df, write_options={"wait_for_job": True})
+
     return hindcast_df
