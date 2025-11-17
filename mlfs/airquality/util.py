@@ -327,7 +327,7 @@ def backfill_predictions_for_monitoring(weather_fg, air_quality_df, monitor_fg, 
         ['date', 'street', 'country', 'pm25', 'predicted_pm25', 'days_before_forecast_day']
     ].copy()
 
-    monitor_insert_df = df.drop(columns=['pm25'] + street_cols + 'pm25_rolling').copy()
+    monitor_insert_df = df.drop(columns=(['pm25', 'pm25_rolling'] + street_cols)).copy()
     monitor_fg.insert(monitor_insert_df, write_options={"wait_for_job": True})
 
     return hindcast_df
