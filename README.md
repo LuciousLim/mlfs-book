@@ -1,43 +1,13 @@
-# mlfs-book
-O'Reilly book - Building Machine Learning Systems with a feature store: batch, real-time, and LLMs
+# Lab Assignment 1
 
+We aim for grade A in this assignment. And the city we chose is Xiamen, China.
 
-## ML System Examples
+The code is in `./notebooks/airquality`
 
+What we have done:
 
-[Dashboards for Example ML Systems](https://featurestorebook.github.io/mlfs-book/)
+1. for grade E: we have gone through all the procedures in the notebooks (in `./notebooks/airquality`). And we have implemented all the pipelines as instructed by the notebooks. We also configured the GitHub Action workflow and deployed the dashboard on GitHub Pages ([link](https://luciouslim.github.io/mlfs-book/air-quality)).
 
+2. for grade C: we have added a new feature called `pm25_rolling`, which is the mean value of pm25 of the previous 3 days. And we have put this new feature into all the pipelines. When predicting multiple days ahead we iteratively use predicted pm25 value before to calculate `pm25_rolling`.
 
-# Run Air Quality Tutorial
-
-See [tutorial instructions here](https://docs.google.com/document/d/1YXfM1_rpo1-jM-lYyb1HpbV9EJPN6i1u6h2rhdPduNE/edit?usp=sharing)
-    
-# Create a conda or virtual environment for your project before you install the requirements
-    pip install -r requirements.txt
-
-
-##  Run pipelines with make commands
-
-    make aq-backfill
-    make aq-features
-    make aq-train
-    make aq-inference
-    make aq-clean
-
-or 
-    make aq-all
-
-
-
-## Feldera
-
-
-mkdir -p /tmp/c.app.hopsworks.ai
-ln -s  /tmp/c.app.hopsworks.ai ~/hopsworks
-docker run -p 8080:8080 \
-  -v ~/hopsworks:/tmp/c.app.hopsworks.ai \
-  --tty --rm -it ghcr.io/feldera/pipeline-manager:latest
-
-
-## Introduction to ML
-I wrote a brief introduction to machine learning [here](./introduction_to_supervised_ml.pdf)
+3. for grade A: we have refactored the code for all the pipelines to support street-level prediction, where we take into account all the sensors (of the streets) in a city. So now in the dashboard it shows all the sensors of Xiamen, China. (Note: there are only two sensors with pm25 data in this city. But our code can support any city with more sensors as well.)
